@@ -37,4 +37,37 @@ namespace SignalRGameServer
             _position = pos;
         }
     }
+
+    public class Collectable
+    {
+        private int _id;
+
+        public int Id
+        {
+            get { return _id; }
+            set { _id = value; }
+        }
+        private Vector2 _pos;
+
+        public Vector2 Pos
+        {
+            get { return _pos; }
+            set { _pos = value; }
+        }
+        private int _score;
+
+        public int Score
+        {
+            get { return _score; }
+            set { _score = value; }
+        }
+
+        public Collectable(int id, Vector2 pos, int score)
+        {
+            _id = id;
+            _pos = pos;
+            _score = score;
+
+        }
+    }
 }

@@ -16,10 +16,13 @@ namespace SignalRGameServer
         public static int _playerCounter = 0;
         public static int _playersPlaying = 0;
         public static Dictionary<int, Player> _players = new Dictionary<int, Player>();
+        public static Dictionary<int, Collectable> _collectables = new Dictionary<int, Collectable>();
+
         public static Timer _startTime;
 
         public void joinServer()
         {
+            
             //_playerCounter++;
             int count = _players.Count;
             _players.Add(count,new Player(count,Vector2.Zero));
@@ -37,6 +40,13 @@ namespace SignalRGameServer
         void _startTime_Elapsed(object sender, ElapsedEventArgs e)
         {
             Clients.All.StartGame();
+            Random r = new Random();
+            int count = r.Next(5, 10);
+            for (int i = 0; i < count; i++)
+            {
+                _collectables.Add(i, new Collectable(i, new Vector2(r.Next(10, 700), r.Next(10, 400)), r.Next(20)));
+            }
+            Clients.All.GetCollectables(_collectables);
         }
         
         // depreciated by dictionary
