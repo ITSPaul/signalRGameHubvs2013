@@ -27,6 +27,10 @@ namespace SignalRGame
         GamePlayer gamePlayer;
         SpriteFont GameMessages;
         bool started = false;
+        List<string> _debugMessages = new List<string>();
+        bool debugOn = false;
+
+        SpriteFont debug;
         
         private string _hubMessage = "";
         private float speed = 5.0f;
@@ -94,6 +98,7 @@ namespace SignalRGame
             //proxy.Invoke("NewPlayer", new object[] { p });
             move(getrandomPos());
             _hubMessage = " Player " + gamePlayer.Player.PlayerID.ToString() + " Joined Game Server ";
+
         }
 
 
@@ -135,6 +140,7 @@ namespace SignalRGame
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
             GameMessages = Content.Load<SpriteFont>("message");
+            debug = Content.Load<SpriteFont>("debugHud");
             // TODO: use this.Content to load your game content here
         }
 
@@ -163,6 +169,12 @@ namespace SignalRGame
             // Allows the game to exit
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
+            
+            if (Keyboard.GetState().IsKeyUp(Keys.D))
+                debugOn = !debugOn;
+            if (Keyboard.GetState().IsKeyUp(Keys.R))
+                _debugMessages.Clear();
+
             if(started)
             { 
             if(gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.A))
@@ -187,10 +199,22 @@ namespace SignalRGame
             if(gamePlayer != null)
                 gamePlayer.Draw(spriteBatch);
             spriteBatch.DrawString(GameMessages, _hubMessage, new Vector2(50,50), Color.White);
+            if (debugOn)
+                drawHud();
             spriteBatch.End();
             // TODO: Add your drawing code here
 
             base.Draw(gameTime);
+        }
+
+        private void drawHud()
+        {
+            Vector2 startPos = new Vector2(10,10);
+            foreach (string s in _debugMessages)
+            {
+                spriteBatch.DrawString(debug, s, startPos,Color.Green);
+                startPos += new Vector2(0, 10);
+            }
         }
 
         private Vector2 getrandomPos()
