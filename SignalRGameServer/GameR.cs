@@ -6,6 +6,8 @@ using System.Web;
 
 namespace SignalRGameServer
 {
+    public enum COLLECTABLE_TYPE { STANDARD, MEDIUM, COMPLEX}
+
     public class Player
     {
         int _playerID;
@@ -35,6 +37,55 @@ namespace SignalRGameServer
         {
             _playerID = id;
             _position = pos;
+        }
+    }
+
+    public class Collectable
+    {
+        int _id;
+        COLLECTABLE_TYPE _type;
+
+        public COLLECTABLE_TYPE Type
+        {
+            get { return _type; }
+            set { _type = value; }
+        }
+        public int Id
+        {
+            get { return _id; }
+            set { _id = value; }
+        }
+        int _value;
+
+        public int Value
+        {
+            get { return _value; }
+            set { _value = value; }
+        }
+        Vector2 _position;
+        public Vector2 Position
+        {
+            get { return _position; }
+            set { _position = value; }
+        }
+        // colleectale value should be 10, 20 or 30
+        public Collectable(int id, Vector2 pos, int value)
+        {
+            _id = id;
+            _position = pos;
+            _value = value;
+            switch (value)
+            {
+                case 10:
+                    _type = COLLECTABLE_TYPE.STANDARD;
+                    break;
+                case 20:
+                    _type = COLLECTABLE_TYPE.MEDIUM;
+                    break;
+                case 30:
+                    _type = COLLECTABLE_TYPE.COMPLEX;
+                    break;
+            }
         }
     }
 }

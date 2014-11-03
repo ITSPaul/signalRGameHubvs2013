@@ -27,9 +27,11 @@ namespace SignalRGame
         GamePlayer gamePlayer;
         SpriteFont GameMessages;
         bool started = false;
-        
+        Dictionary<COLLECTABLE_TYPE, Texture2D> collectableTextures = new Dictionary<COLLECTABLE_TYPE,Texture2D>();
+        Dictionary<int, GameCollectable> _gameCollectables = new Dictionary<int, GameCollectable>();
         private string _hubMessage = "";
         private float speed = 5.0f;
+        private double _countDown;
 
         public Game1()
         {
@@ -69,6 +71,8 @@ namespace SignalRGame
             Action<Player> joined = JoinedXNAGame;
             Action<Player> deleteOtherPlayer = deletePlayerfromOthers;
             Action<Player> AddOtherPlayer = AddToOtherPlayers;
+            Action<double> TimerOn = TimeOn;
+            Action<Dictionary<int, Collectable>> Accept = acceptCollectables;
             Action start = startXNA;
             
             proxy.On("StartGame", start);
@@ -76,8 +80,23 @@ namespace SignalRGame
             proxy.On("JoinedServer", joined);
             proxy.On("DeleteClientPlayerFromOthers", deleteOtherPlayer);
             proxy.On("AddPlayer", AddOtherPlayer);
+            proxy.On("TimerOn", TimerOn);
+            proxy.On("Accept", Accept);
 
             base.Initialize();
+        }
+
+        private void acceptCollectables(Dictionary<int,Collectable> delivered)
+        {
+            // Add the delivered collectable as components to collectable game objects
+            foreach (KeyValuePair<int, Collectable> c in delivered)
+                _gameCollectables.Add(c.Value.Id, new GameCollectable(c.Value,
+                    collectableTextures[c.Value.Type]));
+        }
+
+        private void TimeOn(double countDown)
+        {
+            _countDown = countDown;
         }
 
         private void startXNA()
@@ -136,6 +155,10 @@ namespace SignalRGame
             spriteBatch = new SpriteBatch(GraphicsDevice);
             GameMessages = Content.Load<SpriteFont>("message");
             // TODO: use this.Content to load your game content here
+            collectableTextures.Add(COLLECTABLE_TYPE.STANDARD, Content.Load<Texture2D>("SIMPLE"));
+            collectableTextures.Add(COLLECTABLE_TYPE.MEDIUM, Content.Load<Texture2D>("MEDIUM"));
+            collectableTextures.Add(COLLECTABLE_TYPE.COMPLEX, Content.Load<Texture2D>("COMPLEX"));
+
         }
 
         /// <summary>
@@ -165,10 +188,29 @@ namespace SignalRGame
                 this.Exit();
             if(started)
             { 
-            if(gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.A))
+                if(gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.A))
+                    {
+                        move(new Vector2(-1, 0) * speed);
+                    }
+                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.D))
                 {
-                    move(new Vector2(-1, 0) * speed);
+                    move(new Vector2(1, 0) * speed);
                 }
+                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.W))
+                {
+                    move(new Vector2(0, -1) * speed);
+                }
+                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.S))
+                {
+                    move(new Vector2(0, 1) * speed);
+                }
+                foreach(KeyValuePair<int,GameCollectable> g in  _gameCollectables)
+                    if(g.Value.Visible)
+                        if (gamePlayer.BoundingRect.Intersects(g.Value.BoundingRect))
+                        {
+                            gamePlayer.Player.Score += g.Value.Collectable.Value;
+                            g.Value.Visible = false;
+                        }
             }
 
             // TODO: Add your update logic here
@@ -186,6 +228,11 @@ namespace SignalRGame
             spriteBatch.Begin();
             if(gamePlayer != null)
                 gamePlayer.Draw(spriteBatch);
+            if(_gameCollectables.Count >0)
+                foreach (KeyValuePair<int,GameCollectable> item in _gameCollectables)
+                    if(item.Value.Visible)
+                        item.Value.draw(collectableTextures[item.Value.Collectable.Type], 
+                            spriteBatch);
             spriteBatch.DrawString(GameMessages, _hubMessage, new Vector2(50,50), Color.White);
             spriteBatch.End();
             // TODO: Add your drawing code here
