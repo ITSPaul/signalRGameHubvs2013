@@ -29,9 +29,12 @@ namespace SignalRGame
         bool started = false;
         Dictionary<COLLECTABLE_TYPE, Texture2D> collectableTextures = new Dictionary<COLLECTABLE_TYPE,Texture2D>();
         Dictionary<int, GameCollectable> _gameCollectables = new Dictionary<int, GameCollectable>();
+        List<string> debugMessages = new List<string>();
         private string _hubMessage = "";
         private float speed = 5.0f;
         private double _countDown;
+        SpriteFont debug;
+        bool debugOn;
 
         public Game1()
         {
@@ -184,8 +187,13 @@ namespace SignalRGame
         protected override void Update(GameTime gameTime)
         {
             // Allows the game to exit
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
-                this.Exit();
+            if ((GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+                || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                    this.Exit();
+            
+            if (Keyboard.GetState().IsKeyDown(Keys.Enter))
+                debugOn = !debugOn;
+
             if(started)
             { 
                 if(gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.A))
@@ -234,10 +242,19 @@ namespace SignalRGame
                         item.Value.draw(collectableTextures[item.Value.Collectable.Type], 
                             spriteBatch);
             spriteBatch.DrawString(GameMessages, _hubMessage, new Vector2(50,50), Color.White);
+            if (debugOn)
+                DrawDebugHud(spriteBatch);
             spriteBatch.End();
             // TODO: Add your drawing code here
 
             base.Draw(gameTime);
+        }
+
+        private void DrawDebugHud(SpriteBatch sp)
+        {
+            Vector2 pos = new Vector2(10,10);
+            foreach (string item in debugMessages)
+                sp.DrawString(debug, item, pos, Color.Red);
         }
 
         private Vector2 getrandomPos()
