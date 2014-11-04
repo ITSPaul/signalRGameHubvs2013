@@ -34,9 +34,9 @@ namespace SignalRGame
           set { _boundingRect = value; }
         }
         // Player is responsible for drawing other players as well as it's self
-        static Dictionary<int,GamePlayer> _otherPlayers = new Dictionary<int,GamePlayer>();
+        Dictionary<int,GamePlayer> _otherPlayers = new Dictionary<int,GamePlayer>();
 
-        internal Dictionary<int,GamePlayer> OtherPlayers
+        public Dictionary<int,GamePlayer> OtherPlayers
         {
             get { return _otherPlayers; }
             set { _otherPlayers = value; }

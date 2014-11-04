@@ -34,11 +34,13 @@ namespace SignalRGame
         private float speed = 5.0f;
         private double _countDown;
         SpriteFont debug;
-        bool debugOn;
+        bool debugOn = true;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
+            graphics.PreferredBackBufferWidth = 1080;
+            graphics.PreferredBackBufferHeight = 780;
             Content.RootDirectory = "Content";
         }
 
@@ -77,7 +79,7 @@ namespace SignalRGame
             Action<double> TimerOn = TimeOn;
             Action<Dictionary<int, Collectable>> Accept = acceptCollectables;
             Action start = startXNA;
-            
+            Action<Collectable> CollectableIsGone = Gone;
             proxy.On("StartGame", start);
             proxy.On("UpdateOtherPlayerPosition", positions);
             proxy.On("JoinedServer", joined);
@@ -85,13 +87,16 @@ namespace SignalRGame
             proxy.On("AddPlayer", AddOtherPlayer);
             proxy.On("TimerOn", TimerOn);
             proxy.On("Accept", Accept);
+            proxy.On("Gone", CollectableIsGone);
 
             base.Initialize();
         }
 
         private void acceptCollectables(Dictionary<int,Collectable> delivered)
         {
+            debugMessages.Add("Collectables delivered " + delivered.Count().ToString());
             // Add the delivered collectable as components to collectable game objects
+         if(_gameCollectables.Count == 0)   
             foreach (KeyValuePair<int, Collectable> c in delivered)
                 _gameCollectables.Add(c.Value.Id, new GameCollectable(c.Value,
                     collectableTextures[c.Value.Type]));
@@ -106,26 +111,29 @@ namespace SignalRGame
         {
             _hubMessage = "And We are off. Collect as many collectables as you can";
             started = true;
+            foreach (KeyValuePair<int,GameCollectable> g in _gameCollectables)
+                g.Value.Visible = true;
         }
 
         private void JoinedXNAGame(Player p)
         {
-            //Player p = new Player(id, getrandomPos());
             gamePlayer = new GamePlayer(Content.Load<SpriteFont>("message"),
                 Content.Load<Texture2D>("ship_lvl8"), p);
-            //proxy.Invoke("NewPlayer", new object[] { p });
-            move(getrandomPos());
             _hubMessage = " Player " + gamePlayer.Player.PlayerID.ToString() + " Joined Game Server ";
         }
 
 
         private void AddToOtherPlayers(Player other)
         {
-            if(gamePlayer != null)
+            
+            if (gamePlayer != null)
+            {
                 gamePlayer.OtherPlayers.Add(other.PlayerID,
-                    new GamePlayer(Content.Load<SpriteFont>("message"), 
+                    new GamePlayer(Content.Load<SpriteFont>("message"),
                         Content.Load<Texture2D>("ship_lvl8"), other));
-            _hubMessage = "Player " + other.PlayerID.ToString() + " added to this client ";
+                
+                debugMessages.Add("Player " + other.PlayerID.ToString() + " added to this client ");
+            }
         }
 
         private void deletePlayerfromOthers(Player other)
@@ -144,7 +152,6 @@ namespace SignalRGame
         public void move(Vector2 Delta)
         {
             gamePlayer.Move(Delta);
-            _hubMessage = "Moving Player " + gamePlayer.Player.PlayerID.ToString() + " to " + gamePlayer.Player.Position.ToString();
             proxy.Invoke("movePlayer", new object[] { this.gamePlayer.Player });
         }
 
@@ -157,6 +164,7 @@ namespace SignalRGame
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
             GameMessages = Content.Load<SpriteFont>("message");
+            debug = Content.Load<SpriteFont>("debug");
             // TODO: use this.Content to load your game content here
             collectableTextures.Add(COLLECTABLE_TYPE.STANDARD, Content.Load<Texture2D>("SIMPLE"));
             collectableTextures.Add(COLLECTABLE_TYPE.MEDIUM, Content.Load<Texture2D>("MEDIUM"));
@@ -194,21 +202,28 @@ namespace SignalRGame
             if (Keyboard.GetState().IsKeyDown(Keys.Enter))
                 debugOn = !debugOn;
 
+            if (!started)
+                _countDown -= gameTime.ElapsedGameTime.Milliseconds;
+
+            if (debugOn && Keyboard.GetState().IsKeyDown(Keys.C))
+                debugMessages.Clear();
+
             if(started)
-            { 
-                if(gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.A))
+            {
+                _countDown = 0;
+                if(gamePlayer != null && Keyboard.GetState().IsKeyDown(Keys.A))
                     {
                         move(new Vector2(-1, 0) * speed);
                     }
-                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.D))
+                if (gamePlayer != null && Keyboard.GetState().IsKeyDown(Keys.D))
                 {
                     move(new Vector2(1, 0) * speed);
                 }
-                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.W))
+                if (gamePlayer != null && Keyboard.GetState().IsKeyDown(Keys.W))
                 {
                     move(new Vector2(0, -1) * speed);
                 }
-                if (gamePlayer == null && Keyboard.GetState().IsKeyDown(Keys.S))
+                if (gamePlayer != null && Keyboard.GetState().IsKeyDown(Keys.S))
                 {
                     move(new Vector2(0, 1) * speed);
                 }
@@ -218,6 +233,8 @@ namespace SignalRGame
                         {
                             gamePlayer.Player.Score += g.Value.Collectable.Value;
                             g.Value.Visible = false;
+                            // Inform other clients that this has gone.
+                            proxy.Invoke("collected", new object[] {gamePlayer.Player, g.Value.Collectable});
                         }
             }
 
@@ -226,35 +243,47 @@ namespace SignalRGame
             base.Update(gameTime);
         }
 
+        public void Gone(Collectable c)
+        {
+            _gameCollectables[c.Id].Visible = false;
+        }
+
         /// <summary>
         /// This is called when the game should draw itself.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
-            spriteBatch.Begin();
-            if(gamePlayer != null)
-                gamePlayer.Draw(spriteBatch);
-            if(_gameCollectables.Count >0)
-                foreach (KeyValuePair<int,GameCollectable> item in _gameCollectables)
-                    if(item.Value.Visible)
-                        item.Value.draw(collectableTextures[item.Value.Collectable.Type], 
-                            spriteBatch);
-            spriteBatch.DrawString(GameMessages, _hubMessage, new Vector2(50,50), Color.White);
-            if (debugOn)
-                DrawDebugHud(spriteBatch);
-            spriteBatch.End();
-            // TODO: Add your drawing code here
-
+                GraphicsDevice.Clear(Color.CornflowerBlue);
+                spriteBatch.Begin();
+                if (_countDown > 0)
+                    spriteBatch.DrawString(GameMessages, "Game Starting in " + ((int)_countDown/1000).ToString(), new Vector2(10,200 ), Color.White);
+                // Draw the player
+                if (gamePlayer != null)
+                    gamePlayer.Draw(spriteBatch);
+                // Draw collectables if delivered
+                if (_gameCollectables.Count > 0)
+                    foreach (KeyValuePair<int, GameCollectable> item in _gameCollectables)
+                        if (item.Value.Visible)
+                            item.Value.draw(collectableTextures[item.Value.Collectable.Type],
+                                spriteBatch);
+                spriteBatch.DrawString(GameMessages, _hubMessage, new Vector2(10, 250), Color.White);
+                // debug hud
+                if (debugOn)
+                    DrawDebugHud(spriteBatch);
+                spriteBatch.End();
+                // TODO: Add your drawing code here
             base.Draw(gameTime);
         }
 
         private void DrawDebugHud(SpriteBatch sp)
         {
             Vector2 pos = new Vector2(10,10);
-            foreach (string item in debugMessages)
+            foreach (string item in debugMessages) 
+            {
                 sp.DrawString(debug, item, pos, Color.Red);
+                pos += new Vector2(0, 20);
+            }
         }
 
         private Vector2 getrandomPos()

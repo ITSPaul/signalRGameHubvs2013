@@ -56,7 +56,13 @@ namespace SignalRGameServer
             set { _id = value; }
         }
         int _value;
+        bool _collected;
 
+        public bool Collected
+        {
+            get { return _collected; }
+            set { _collected = value; }
+        }
         public int Value
         {
             get { return _value; }
@@ -68,12 +74,14 @@ namespace SignalRGameServer
             get { return _position; }
             set { _position = value; }
         }
+        
         // colleectale value should be 10, 20 or 30
         public Collectable(int id, Vector2 pos, int value)
         {
             _id = id;
             _position = pos;
             _value = value;
+            _collected = false;
             switch (value)
             {
                 case 10:
