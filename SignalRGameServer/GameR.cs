@@ -40,6 +40,8 @@ namespace SignalRGameServer
         }
     }
 
+    public enum GAMESTATE { NONE, STARTING, PLAYING, ENDING, FINISHED }
+
     public class Collectable
     {
         int _id;
