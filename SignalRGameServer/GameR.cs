@@ -33,6 +33,14 @@ namespace SignalRGameServer
             set { _score = value; }
         }
 
+        private bool _firstIn;
+
+        public bool FirstIn
+        {
+            get { return _firstIn; }
+            set { _firstIn = value; }
+        }
+
         public Player(int id, Vector2 pos)
         {
             _playerID = id;

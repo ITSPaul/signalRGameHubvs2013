@@ -7,7 +7,7 @@ using Microsoft.AspNet.SignalR.Hubs;
 using Microsoft.Xna.Framework;
 using System.Timers;
 using System.Threading.Tasks;
-
+using Utilities;
 
 namespace SignalRGameServer
 {
@@ -23,7 +23,7 @@ namespace SignalRGameServer
         public static Timer _startTime;
         public static bool _gameStarted = false;
         public static bool _gameOver = false;
-        public static Vector2 worldEnd = new Vector2(400, 200);
+        public static Vector2 worldEnd = new Vector2(800, 600);
 
         public Vector2 WorldsEnd()
         {
@@ -58,7 +58,7 @@ namespace SignalRGameServer
             int count = _players.Count;
             // Player initial position has to be set on the server as this will be needed in 
             // others
-            Player p = new Player(count, randomPosition((int)worldEnd.X, (int)worldEnd.Y));
+            Player p = new Player(count, randomPosition((int)worldEnd.X - 50, (int)worldEnd.Y - 50));
             _players.Add(p.PlayerID,p);
             // Inform the Caller that the player has joined the game
             //Clients.Caller.JoinedServer(_players[count]);
@@ -94,6 +94,7 @@ namespace SignalRGameServer
                 case GAMESTATE.ENDING:
                     _startTime.Stop();
                     state = GAMESTATE.FINISHED;
+                    gameReset();
                     break;
             }
 
@@ -109,9 +110,8 @@ namespace SignalRGameServer
                 for (int i = 0; i < collectableCount; i++)
                     // Add a collectable to the collection with a random position and a random possible value
                     _collectables.Add(i,
-                        new Collectable(i, new Vector2(r.Next(40, (int)worldEnd.X), 
-                            r.Next(40, (int)worldEnd.Y)),
-                            possibles[r.Next(0, 2)]
+                        new Collectable(i, randomPosition((int)worldEnd.X - 40,(int)worldEnd.Y - 40),
+                            possibles[Utility.NextRandom(0,2)]
                         ));
             return _collectables;
         }
@@ -145,9 +145,11 @@ namespace SignalRGameServer
                     break;
                 case GAMESTATE.FINISHED:
                      _playerCounter = 0;
+                     _playersPlaying = 0;
                     _collectables = new Dictionary<int, Collectable>();
                     _players = new Dictionary<int, Player>();
                     // Allow others to join a new game
+                    Clients.All.quitGame();
                     state = GAMESTATE.NONE;
                     break;
             }
@@ -198,8 +200,8 @@ namespace SignalRGameServer
 
         public Vector2 randomPosition(int MaxX, int MaxY)
         {
-            Random r = new Random();
-            return new Vector2(r.Next(0, MaxX), r.Next(0, MaxY));
+            return new Vector2(Utility.NextRandom( 40,MaxX),
+                                Utility.NextRandom(40,MaxY));
         }
 
     }
