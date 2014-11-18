@@ -59,7 +59,7 @@ namespace SignalRGame
             connection = new HubConnection("http://localhost:49669/");
             proxy = connection.CreateHubProxy("GameHub");
             
-
+            
             // Messages expected from the server
             Action<Player> positions = UpdatePositionOtherPlayer;
             Action<Player> joined = JoinedXNAGame;
@@ -70,7 +70,7 @@ namespace SignalRGame
             Action start = startXNA;
             Action<Collectable> CollectableIsGone = Gone;
             Action<List<KeyValuePair<int,Player>>> presentScores = PresentScores;
-            
+            Action quitGame = quitServer;
             proxy.On("StartGame", start);
             proxy.On("UpdateOtherPlayerPosition", positions);
             proxy.On("JoinedServer", joined);
@@ -80,7 +80,13 @@ namespace SignalRGame
             proxy.On("Accept", Accept);
             proxy.On("Gone", CollectableIsGone);
             proxy.On("PresentScoreBoard", presentScores);
+            proxy.On("quitGame", quitGame);
             base.Initialize();
+        }
+
+        private void quitServer()
+        {
+            this.Exit();
         }
 
         private void PresentScores(List<KeyValuePair<int,Player>> ScoreDictionary)
@@ -179,9 +185,10 @@ namespace SignalRGame
             {
                 connection.Start().ContinueWith((started) =>
                 {
-                    proxy.Invoke<Vector2>("WorldsEnd").ContinueWith((coords)
-                        => { graphics.PreferredBackBufferWidth = (int)coords.Result.X;
-                        graphics.PreferredBackBufferHeight = (int)coords.Result.Y;        
+                    proxy.Invoke<Vector2>("WorldsEnd").ContinueWith((dimensions)
+                       => { 
+                            graphics.PreferredBackBufferWidth = (int)dimensions.Result.X;
+                             graphics.PreferredBackBufferHeight = (int)dimensions.Result.Y;
                     });
 
                     proxy.Invoke<Player>("JoinServer").ContinueWith((OnCreated)
@@ -235,9 +242,13 @@ namespace SignalRGame
 
         protected override void OnExiting(object sender, EventArgs args)
         {
-            if(gamePlayer != null)
-                proxy.Invoke("DeletePlayer", new object[] { this.gamePlayer.Player});
-            base.OnExiting(sender, args);
+            proxy.Invoke<GAMESTATE>("getCurrentGameState").ContinueWith((exitingServer) =>
+            {
+                if(exitingServer.Result != GAMESTATE.FINISHED)
+                    if (gamePlayer != null)
+                        proxy.Invoke("DeletePlayer", new object[] { this.gamePlayer.Player });
+                base.OnExiting(sender, args);
+            });
         }
         /// <summary>
         /// Allows the game to run logic such as updating the world,
@@ -246,6 +257,7 @@ namespace SignalRGame
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            
             // Allows the game to exit
             if ((GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -287,7 +299,8 @@ namespace SignalRGame
                             g.Value.Visible = false;
                             // Inform other clients that this has gone.
                             ShowServerState();
-                            proxy.Invoke("Collected", new object[] {gamePlayer.Player, g.Value.Collectable});
+                            proxy.Invoke("Collected", new object[] {gamePlayer.Player, g.Value.Collectable})
+                                .ContinueWith((showCollectables) => { serverActiveCollectablesCount(); });
                             //ShowServerState();
                         }
             }
@@ -313,7 +326,7 @@ namespace SignalRGame
                 if (scoreBoard == null)
                 {
                     if (_countDown > 0)
-                        spriteBatch.DrawString(GameMessages, "Game Starting in " + ((int)_countDown / 1000).ToString(), new Vector2(10, 200), Color.White);
+                        spriteBatch.DrawString(GameMessages, "Game Starting in " + ((int)_countDown / 1000).ToString(), new Vector2(400, 20), Color.White);
                     // Draw the player
                     if (gamePlayer != null)
                         gamePlayer.Draw(spriteBatch);

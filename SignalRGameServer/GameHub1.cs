@@ -145,7 +145,7 @@ namespace SignalRGameServer
                     break;
                 case GAMESTATE.FINISHED:
                      _playerCounter = 0;
-                     _playersPlaying = 0;
+                    _playersPlaying = 0;
                     _collectables = new Dictionary<int, Collectable>();
                     _players = new Dictionary<int, Player>();
                     // Allow others to join a new game
